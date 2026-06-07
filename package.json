@@ -2,9 +2,9 @@
   "name": "bot-saqsayki-messenger",
   "version": "1.0.0",
   "description": "Bot de Facebook Messenger para el Parque Temático Saqsayki",
-  "main": "index.js",
+  "main": "messenger.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node messenger.js"
   },
   "dependencies": {
     "express": "^4.19.2",
