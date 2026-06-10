@@ -16,7 +16,7 @@ const CARTA_URL = 'https://raw.githubusercontent.com/alvaroalexishuillcahuamanta
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ============================================================
-// RUTA PARA UPTIMEROBOT (Mantiene al bot despierto)
+// RUTA DE SALUD (Para UptimeRobot)
 // ============================================================
 app.get('/', (req, res) => {
     res.status(200).send('Bot Saqsayki está encendido y funcionando');
@@ -129,8 +129,10 @@ app.get('/webhook', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
     const body = req.body;
+    // Validamos que el evento venga de una página antes de procesarlo
     if (body.object === 'page') {
         for (const entry of body.entry) {
+            // Protección: verificamos que exista 'messaging' antes de iterar
             if (entry.messaging) {
                 for (const event of entry.messaging) {
                     const senderId = event.sender.id;
@@ -146,6 +148,7 @@ app.post('/webhook', async (req, res) => {
                 }
             }
         }
+        // Respondemos 200 siempre para que Meta no reintente el envío
         res.status(200).send('EVENT_RECEIVED');
     } else {
         res.sendStatus(404);
