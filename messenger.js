@@ -7,7 +7,7 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 
 // ============================================================
-// CONFIGURACIÓN
+// CONFIGURACIÓN (Variables se configuran en Render)
 // ============================================================
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || '';
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'MI_TOKEN_SECRETO_123';
@@ -19,7 +19,7 @@ const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // RUTA DE SALUD (Para UptimeRobot)
 // ============================================================
 app.get('/', (req, res) => {
-    res.status(200).send('Bot Saqsayki está encendido y funcionando');
+    res.status(200).send('Bot Saqsayki está activo');
 });
 
 // ============================================================
@@ -34,7 +34,7 @@ async function sendTextMessage(senderId, texto) {
             message: { text: texto }
         });
     } catch (error) {
-        console.error('❌ Error enviando texto:', error.response?.data || error.message);
+        console.error('❌ Error enviando texto:', error.response?.data?.error || error.message);
     }
 }
 
@@ -52,7 +52,7 @@ async function sendQuickReplies(senderId, texto, opciones) {
             message: { text: texto, quick_replies: quickReplies }
         });
     } catch (error) {
-        console.error('❌ Error enviando botones:', error.response?.data || error.message);
+        console.error('❌ Error enviando botones:', error.response?.data?.error || error.message);
     }
 }
 
@@ -74,23 +74,18 @@ async function sendImageMessage(senderId, imageUrl, caption) {
             await sendTextMessage(senderId, caption);
         }
     } catch (error) {
-        console.error('❌ Error enviando imagen:', error.response?.data || error.message);
+        console.error('❌ Error enviando imagen:', error.response?.data?.error || error.message);
     }
 }
 
 // ============================================================
 // LÓGICA DE MENÚS
 // ============================================================
-function obtenerSaludo() {
-    const hora = new Date().getHours();
-    if (hora >= 6 && hora < 12) return "🌅 Buenos días";
-    if (hora >= 12 && hora < 19) return "🌤️ Buenas tardes";
-    return "🌙 Buenas noches";
-}
-
 async function enviarMenuConBotones(senderId) {
-    const saludo = obtenerSaludo();
-    const menuTexto = `${saludo} ✨\n\n*Bienvenido(a) al Parque Temático Saqsayki*\n\nVive una experiencia única llena de aventura, diversión y naturaleza.\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📌 *Seleccione una opción:*\n\n💬 Escriba *menu* para ver este mensaje nuevamente`;
+    const hora = new Date().getHours();
+    const saludo = (hora >= 6 && hora < 12) ? "🌅 Buenos días" : (hora >= 12 && hora < 19) ? "🌤️ Buenas tardes" : "🌙 Buenas noches";
+    
+    const menuTexto = `${saludo} ✨\n\n*Bienvenido(a) al Parque Temático Saqsayki*\n\n📌 *Seleccione una opción:*`;
     const opciones = [
         { title: "🕒 Horarios", payload: "OPCION_1" },
         { title: "💰 Precios", payload: "OPCION_2" },
@@ -104,16 +99,14 @@ async function enviarMenuConBotones(senderId) {
 async function enviarInformacion(senderId, opcion) {
     let texto = '';
     switch (opcion) {
-        case '1': texto = `🕒 *HORARIOS*\n📅 Lunes a domingo: 9:30 a.m. a 5:30 p.m.\n🎟️ Ingreso: Adultos S/7, Niños S/4`; break;
-        case '2': texto = `💰 *PRECIOS*\n🌊 Acuáticos: S/5 a S/8\n⛰️ Columpio: S/20\n🧗 Circuito: S/20`; break;
-        case '3': texto = `🎒 *PAQUETES*\n💦 Acuático S/25\n🧗 Aventurero S/35\n🔥 Full S/45`; break;
+        case '1': texto = `🕒 *HORARIOS*\n📅 Lunes a domingo: 9:30 a.m. a 5:30 p.m.`; break;
+        case '2': texto = `💰 *PRECIOS*\n🌊 Acuáticos: S/5-S/8 | ⛰️ Columpio: S/20 | 🧗 Circuito: S/20`; break;
+        case '3': texto = `🎒 *PAQUETES*\n💦 Acuático S/25 | 🧗 Aventurero S/35 | 🔥 Full S/45`; break;
         case '4': texto = `📍 *UBICACIÓN*\nA 30 min de Chicana Grande.`; break;
-        case '5': await sendImageMessage(senderId, CARTA_URL, `🍽️ *CARTA DEL RESTAURANTE*`); return;
-        default: texto = `❌ Opción no válida. Escriba *menu*.`;
+        case '5': await sendImageMessage(senderId, CARTA_URL, `🍽️ *CARTA*`); return;
+        default: texto = `❌ Opción no válida.`;
     }
     await sendTextMessage(senderId, texto);
-    await esperar(500);
-    await sendQuickReplies(senderId, "🔙 ¿Volver al menú?", [{ title: "🔙 Volver", payload: "VOLVER_MENU" }]);
 }
 
 // ============================================================
@@ -129,27 +122,31 @@ app.get('/webhook', (req, res) => {
 
 app.post('/webhook', async (req, res) => {
     const body = req.body;
-    // Validamos que el evento venga de una página antes de procesarlo
+    
+    // Log para depurar: verás esto en Render cuando alguien escriba al bot
+    console.log('📥 Evento recibido:', JSON.stringify(body, null, 2));
+
     if (body.object === 'page') {
+        // Respondemos inmediatamente para cumplir con el tiempo de Meta
+        res.status(200).send('EVENT_RECEIVED');
+
         for (const entry of body.entry) {
-            // Protección: verificamos que exista 'messaging' antes de iterar
             if (entry.messaging) {
                 for (const event of entry.messaging) {
                     const senderId = event.sender.id;
                     const textoRecibido = event.message?.text?.trim().toLowerCase() || '';
                     const payload = event.message?.quick_reply?.payload;
 
-                    if (['OPCION_1', '1'].includes(payload || textoRecibido)) await enviarInformacion(senderId, '1');
-                    else if (['OPCION_2', '2'].includes(payload || textoRecibido)) await enviarInformacion(senderId, '2');
-                    else if (['OPCION_3', '3'].includes(payload || textoRecibido)) await enviarInformacion(senderId, '3');
-                    else if (['OPCION_4', '4'].includes(payload || textoRecibido)) await enviarInformacion(senderId, '4');
-                    else if (['OPCION_5', '5'].includes(payload || textoRecibido)) await enviarInformacion(senderId, '5');
+                    const opcion = payload || textoRecibido;
+                    if (['1', 'OPCION_1'].includes(opcion)) await enviarInformacion(senderId, '1');
+                    else if (['2', 'OPCION_2'].includes(opcion)) await enviarInformacion(senderId, '2');
+                    else if (['3', 'OPCION_3'].includes(opcion)) await enviarInformacion(senderId, '3');
+                    else if (['4', 'OPCION_4'].includes(opcion)) await enviarInformacion(senderId, '4');
+                    else if (['5', 'OPCION_5'].includes(opcion)) await enviarInformacion(senderId, '5');
                     else await enviarMenuConBotones(senderId);
                 }
             }
         }
-        // Respondemos 200 siempre para que Meta no reintente el envío
-        res.status(200).send('EVENT_RECEIVED');
     } else {
         res.sendStatus(404);
     }
