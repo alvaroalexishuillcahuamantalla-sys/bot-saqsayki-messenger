@@ -7,13 +7,20 @@ app.use(express.json());
 const PORT = process.env.PORT || 10000;
 
 // ============================================================
-// CONFIGURACIÓN (Asegúrate de que estas variables estén en Render)
+// CONFIGURACIÓN
 // ============================================================
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN || '';
 const VERIFY_TOKEN = process.env.VERIFY_TOKEN || 'MI_TOKEN_SECRETO_123';
 const CARTA_URL = 'https://raw.githubusercontent.com/alvaroalexishuillcahuamantalla-sys/bot-saqsayki/main/carta.jpeg';
 
 const esperar = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// ============================================================
+// RUTA PARA UPTIMEROBOT (Mantiene al bot despierto)
+// ============================================================
+app.get('/', (req, res) => {
+    res.status(200).send('Bot Saqsayki está encendido y funcionando');
+});
 
 // ============================================================
 // FUNCIONES DE ENVÍO
@@ -110,7 +117,7 @@ async function enviarInformacion(senderId, opcion) {
 }
 
 // ============================================================
-// WEBHOOKS (Rutas de comunicación con Meta)
+// WEBHOOKS
 // ============================================================
 app.get('/webhook', (req, res) => {
     if (req.query['hub.mode'] === 'subscribe' && req.query['hub.verify_token'] === VERIFY_TOKEN) {
